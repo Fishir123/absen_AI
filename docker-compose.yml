@@ -3,13 +3,15 @@ services:
     image: mysql:8.0
     container_name: absen_mysql
     restart: always
-    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone='+07:00'
     environment:
+      TZ: Asia/Jakarta
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_strong_password_123}
       MYSQL_DATABASE: ${DB_NAME:-absensi_db}
       MYSQL_USER: ${DB_USER:-absensi_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-absen_pass_secure_123}
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       - mysql_data:/var/lib/mysql
       - ./backend/config/database.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
@@ -45,6 +47,7 @@ services:
       ai-service:
         condition: service_started
     environment:
+      TZ: Asia/Jakarta
       PORT: 5000
       NODE_ENV: production
       DB_HOST: mysql
@@ -61,10 +64,12 @@ services:
       UPLOAD_MAX_SIZE_MB: 10
       CORS_ORIGIN: '*'
     volumes:
+      - /etc/localtime:/etc/localtime:ro
       # Persistent storage untuk foto absen, wajah, dan berkas izin
       - uploads_storage:/app/uploads
     ports:
       - "5000:5000"
+
     networks:
       - absen_network
 
@@ -86,9 +91,12 @@ services:
     image: phpmyadmin/phpmyadmin:latest
     restart: always
     environment:
+      TZ: Asia/Jakarta
       PMA_HOST: mysql
       PMA_PORT: 3306
       UPLOAD_LIMIT: 64M
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
     ports:
       - "8888:80"
     networks:
