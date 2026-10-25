@@ -139,7 +139,12 @@ const authController = {
         });
       }
 
-      // Generate JWT
+      // Generate JWT:
+      // - Mobile / Karyawan: Tanpa batas waktu kedaluwarsa (aktif selamanya) agar presensi tidak terganggu
+      // - Web Admin: Tetap memiliki batas waktu sesi (24 jam) demi keamanan
+      const isMobileClient = req.headers['x-client'] === 'mobile' || req.body.platform === 'mobile' || user.role !== 'admin';
+      const jwtOptions = isMobileClient ? {} : { expiresIn: process.env.JWT_EXPIRES_IN || '24h' };
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -147,7 +152,7 @@ const authController = {
           role: user.role,
         },
         process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+        jwtOptions
       );
 
       return res.status(200).json({

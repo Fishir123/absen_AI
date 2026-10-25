@@ -207,9 +207,6 @@ const Attendance = {
    * @returns {Promise<{ clockIn: object|null, clockOut: object|null, hasClockedIn: boolean, hasClockedOut: boolean }>}
    */
   getTodayStatus: async (userId) => {
-    // Jalankan auto clock-out untuk menutup presensi hari-hari sebelumnya yang belum di-clock out
-    await Attendance.autoClockOut(userId);
-
     const { startOfDay, endOfDay } = getTodayRangeWIB();
     const [rows] = await pool.execute(
       `SELECT id, user_id, status, created_at FROM attendance_logs 
@@ -284,61 +281,6 @@ const Attendance = {
           }
         : (leaveLog ? { status: 'approved', reason: 'Izin', time: formatClockTime(leaveLog) } : null),
     };
-  },
-
-  /**
-   * Otomatis melakukan Clock Out untuk karyawan yang lupa Clock Out.
-   * Mencari semua data 'Clock In' yang belum memiliki pasangan 'Clock Out' pada tanggal yang sama.
-   * @param {number} [userId] - Opsional, jika ingin memproses user tertentu saja.
-   * @returns {Promise<number>} - Jumlah record Clock Out otomatis yang dibuat.
-   */
-  autoClockOut: async (userId = null) => {
-    try {
-      const { startOfDay } = getTodayRangeWIB();
-      let query = `
-        SELECT cin.id, cin.user_id, cin.location_id, cin.created_at, DATE(cin.created_at) as log_date
-        FROM attendance_logs cin
-        WHERE cin.status = 'Clock In'
-          AND cin.created_at < ?
-          AND NOT EXISTS (
-            SELECT 1 FROM attendance_logs cout
-            WHERE cout.user_id = cin.user_id
-              AND cout.status = 'Clock Out'
-              AND DATE(cout.created_at) = DATE(cin.created_at)
-          )
-      `;
-      const params = [startOfDay];
-
-      if (userId) {
-        query += ' AND cin.user_id = ?';
-        params.push(userId);
-      }
-
-      const [unclosed] = await pool.execute(query, params);
-      let createdCount = 0;
-
-      for (const item of unclosed) {
-        // Format waktu auto clock out pada pukul 23:59:00 di tanggal absensi terkait
-        const d = new Date(item.created_at);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const autoClockOutTime = `${yyyy}-${mm}-${dd} 23:59:00`;
-
-        await pool.execute(
-          `INSERT INTO attendance_logs 
-            (user_id, latitude, longitude, distance, face_confidence, status, photo, location_id, created_at)
-           VALUES (?, 0, 0, 0, 100, 'Clock Out', NULL, ?, ?)`,
-          [item.user_id, item.location_id || null, autoClockOutTime]
-        );
-        createdCount++;
-      }
-
-      return createdCount;
-    } catch (err) {
-      console.error('⚠️ Error in autoClockOut:', err.message);
-      return 0;
-    }
   },
 
   /**
