@@ -648,9 +648,18 @@ const attendanceController = {
     try {
       const userId = req.user.id;
       const page = parseInt(req.query.page, 10) || 1;
-      const limit = parseInt(req.query.limit, 10) || 20;
+      const limit = parseInt(req.query.limit, 10) || 100;
+      const { date, month, year, date_from, date_to } = req.query;
 
-      const result = await Attendance.findByUserId(userId, { page, limit });
+      const result = await Attendance.findByUserId(userId, {
+        page,
+        limit,
+        date,
+        month,
+        year,
+        date_from,
+        date_to,
+      });
 
       return res.status(200).json({
         success: true,
@@ -661,6 +670,158 @@ const attendanceController = {
           page: result.page,
           totalPages: result.totalPages,
           limit,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * GET /api/attendance/statistics
+   * Mengambil ringkasan statistik diagram batang untuk user yang login:
+   * - ci_and_co : Clock In & Clock Out
+   * - ci_not_co : Clock In tanpa Clock Out
+   * - izin      : Izin disetujui / log izin
+   * - alpha     : Hari kerja tanpa absensi & izin
+   * Query params: date (YYYY-MM-DD), month (1-12), year (YYYY)
+   */
+  getMyStatistics: async (req, res, next) => {
+    try {
+      const userId = req.user.id;
+      const { date, month, year } = req.query;
+
+      const now = new Date();
+      const nowWIBStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(now);
+      const currentYear = parseInt(nowWIBStr.split('-')[0], 10);
+      const currentMonth = parseInt(nowWIBStr.split('-')[1], 10);
+
+      let startDateStr, endDateStr;
+
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        startDateStr = date;
+        endDateStr = date;
+      } else {
+        const filterYear = year ? parseInt(year, 10) : currentYear;
+        if (month && parseInt(month, 10) >= 1 && parseInt(month, 10) <= 12) {
+          const filterMonth = parseInt(month, 10);
+          const mm = String(filterMonth).padStart(2, '0');
+          const lastDay = new Date(filterYear, filterMonth, 0).getDate();
+          startDateStr = `${filterYear}-${mm}-01`;
+          endDateStr = `${filterYear}-${mm}-${String(lastDay).padStart(2, '0')}`;
+        } else {
+          // Seluruh tahun
+          startDateStr = `${filterYear}-01-01`;
+          endDateStr = `${filterYear}-12-31`;
+        }
+      }
+
+      const { pool } = require('../config/database');
+      const [logs] = await pool.execute(
+        `SELECT DATE(created_at) as log_date, status, created_at
+         FROM attendance_logs
+         WHERE user_id = ?
+           AND created_at >= ? AND created_at <= ?
+           AND status IN ('Clock In', 'Clock Out', 'Izin')
+         ORDER BY created_at ASC`,
+        [userId, `${startDateStr} 00:00:00`, `${endDateStr} 23:59:59`]
+      );
+
+      const [leaves] = await pool.execute(
+        `SELECT DATE(created_at) as leave_date, reason, status
+         FROM leave_requests
+         WHERE user_id = ?
+           AND status = 'approved'
+           AND created_at >= ? AND created_at <= ?`,
+        [userId, `${startDateStr} 00:00:00`, `${endDateStr} 23:59:59`]
+      );
+
+      const dateMap = new Map();
+
+      logs.forEach((log) => {
+        const dStr = log.log_date instanceof Date
+          ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(log.log_date)
+          : String(log.log_date).slice(0, 10);
+
+        if (!dateMap.has(dStr)) {
+          dateMap.set(dStr, { hasClockIn: false, hasClockOut: false, hasLeave: false });
+        }
+        const entry = dateMap.get(dStr);
+        if (log.status === 'Clock In') entry.hasClockIn = true;
+        if (log.status === 'Clock Out') entry.hasClockOut = true;
+        if (log.status === 'Izin') entry.hasLeave = true;
+      });
+
+      leaves.forEach((l) => {
+        const dStr = l.leave_date instanceof Date
+          ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(l.leave_date)
+          : String(l.leave_date).slice(0, 10);
+
+        if (!dateMap.has(dStr)) {
+          dateMap.set(dStr, { hasClockIn: false, hasClockOut: false, hasLeave: false });
+        }
+        dateMap.get(dStr).hasLeave = true;
+      });
+
+      let ciAndCo = 0;
+      let ciNotCo = 0;
+      let izinCount = 0;
+      let alphaCount = 0;
+
+      for (const [_, entry] of dateMap.entries()) {
+        if (entry.hasClockIn && entry.hasClockOut) {
+          ciAndCo++;
+        } else if (entry.hasClockIn && !entry.hasClockOut) {
+          ciNotCo++;
+        } else if (!entry.hasClockIn && entry.hasLeave) {
+          izinCount++;
+        }
+      }
+
+      const parseDate = (str) => {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+      };
+
+      const startD = parseDate(startDateStr);
+      const endD = parseDate(endDateStr);
+      const todayD = parseDate(nowWIBStr);
+
+      const effectiveEnd = endD > todayD ? todayD : endD;
+      let cur = new Date(startD);
+
+      while (cur <= effectiveEnd) {
+        const yyyy = cur.getFullYear();
+        const mm = String(cur.getMonth() + 1).padStart(2, '0');
+        const dd = String(cur.getDate()).padStart(2, '0');
+        const dStr = `${yyyy}-${mm}-${dd}`;
+        const dayOfWeek = cur.getDay(); // 0: Minggu, 6: Sabtu
+
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const entry = dateMap.get(dStr);
+        const hasActivity = entry && (entry.hasClockIn || entry.hasLeave);
+
+        if (!hasActivity) {
+          if (startDateStr === endDateStr) {
+            alphaCount++;
+          } else if (!isWeekend) {
+            alphaCount++;
+          }
+        }
+
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Statistik absensi berhasil dihitung.',
+        data: {
+          ci_and_co: ciAndCo,
+          ci_not_co: ciNotCo,
+          izin: izinCount,
+          alpha: alphaCount,
+          start_date: startDateStr,
+          end_date: endDateStr,
         },
       });
     } catch (error) {

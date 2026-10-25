@@ -24,6 +24,9 @@ router.post(
 // Riwayat absensi user yang sedang login
 router.get('/history', authMiddleware, attendanceController.getMyHistory);
 
+// Statistik diagram batang absensi user yang sedang login
+router.get('/statistics', authMiddleware, attendanceController.getMyStatistics);
+
 // Semua log absensi (admin only)
 router.get('/', authMiddleware, adminOnly, attendanceController.getAllAttendance);
 
