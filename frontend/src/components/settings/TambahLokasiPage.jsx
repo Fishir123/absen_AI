@@ -388,21 +388,20 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
                   <th style={{ ...styles.th, minWidth: 200 }}>LOKASI KANTOR</th>
                   <th style={{ ...styles.th, minWidth: 140 }}>LONGITUDE</th>
                   <th style={{ ...styles.th, minWidth: 140 }}>LATITUDE</th>
-                  <th style={{ ...styles.th, minWidth: 130, textAlign: 'center' }}>STATUS</th>
                   <th style={{ ...styles.th, width: 120, textAlign: 'center' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" style={styles.emptyCell}>
+                    <td colSpan="5" style={styles.emptyCell}>
                       <div style={styles.spinner} />
                       <span style={{ color: '#8c9ab0', fontSize: 13, marginTop: 8 }}>Memuat data titik lokasi kantor...</span>
                     </td>
                   </tr>
                 ) : locations.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={styles.emptyCell}>
+                    <td colSpan="5" style={styles.emptyCell}>
                       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c4cdd8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                         <circle cx="12" cy="9" r="2.5" />
@@ -446,68 +445,6 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
                         <span style={styles.coordBadge}>
                           {loc.latitude !== undefined ? Number(loc.latitude).toFixed(6) : '-'}
                         </span>
-                      </td>
-
-                      {/* STATUS */}
-                      <td style={{ ...styles.td, textAlign: 'center' }}>
-                        {loc.is_active ? (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '5px 12px',
-                              borderRadius: 20,
-                              background: '#ecfdf5',
-                              color: '#059669',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              border: '1px solid #a7f3d0',
-                            }}
-                          >
-                            <span
-                              style={{
-                                width: 7,
-                                height: 7,
-                                borderRadius: '50%',
-                                background: '#10b981',
-                                boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)',
-                              }}
-                            />
-                            Aktif (Utama)
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleSetActive(loc)}
-                            title="Jadikan lokasi ini sebagai lokasi aktif utama"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                              padding: '4px 10px',
-                              borderRadius: 20,
-                              background: '#f8fafc',
-                              color: '#64748b',
-                              fontSize: 11.5,
-                              fontWeight: 600,
-                              border: '1px solid #cbd5e1',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#e0f2fe';
-                              e.currentTarget.style.color = '#0284c7';
-                              e.currentTarget.style.borderColor = '#7dd3fc';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = '#f8fafc';
-                              e.currentTarget.style.color = '#64748b';
-                              e.currentTarget.style.borderColor = '#cbd5e1';
-                            }}
-                          >
-                            Jadikan Utama
-                          </button>
-                        )}
                       </td>
 
                       {/* ACTION (Edit & Delete) */}
