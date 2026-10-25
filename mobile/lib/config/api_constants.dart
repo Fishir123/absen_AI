@@ -55,6 +55,7 @@ class ApiConstants {
   // Attendance Endpoints
   static String get submitAttendanceUrl => '$baseUrl/api/attendance';
   static String get attendanceHistoryUrl => '$baseUrl/api/attendance/history';
+  static String get attendanceStatisticsUrl => '$baseUrl/api/attendance/statistics';
   static String get todayAttendanceUrl => '$baseUrl/api/attendance/today';
 
   // Location Endpoints

@@ -117,12 +117,40 @@ const Attendance = {
    * Ambil riwayat absensi berdasarkan user_id.
    * @param {number} userId
    * @param {object} options - { page, limit }
+   * Ambil riwayat absensi berdasarkan user_id dengan opsi filter tanggal, bulan, tahun.
+   * @param {number} userId
+   * @param {object} options - { page, limit, date, month, year, date_from, date_to }
    * @returns {Promise<{ data: Array, total: number, page: number, totalPages: number }>}
    */
-  findByUserId: async (userId, { page = 1, limit = 20 } = {}) => {
+  findByUserId: async (userId, { page = 1, limit = 20, date, month, year, date_from, date_to } = {}) => {
+    let whereClause = "WHERE a.user_id = ? AND a.status IN ('Clock In', 'Clock Out', 'Izin', 'Hadir')";
+    const params = [userId];
+
+    if (date) {
+      whereClause += " AND DATE(a.created_at) = ?";
+      params.push(date);
+    } else {
+      if (year) {
+        whereClause += " AND YEAR(a.created_at) = ?";
+        params.push(parseInt(year, 10));
+      }
+      if (month) {
+        whereClause += " AND MONTH(a.created_at) = ?";
+        params.push(parseInt(month, 10));
+      }
+      if (date_from) {
+        whereClause += " AND DATE(a.created_at) >= ?";
+        params.push(date_from);
+      }
+      if (date_to) {
+        whereClause += " AND DATE(a.created_at) <= ?";
+        params.push(date_to);
+      }
+    }
+
     const [countResult] = await pool.execute(
-      "SELECT COUNT(*) as total FROM attendance_logs WHERE user_id = ? AND status IN ('Clock In', 'Clock Out', 'Izin', 'Hadir')",
-      [userId]
+      `SELECT COUNT(*) as total FROM attendance_logs a ${whereClause}`,
+      params
     );
     const total = countResult[0].total;
 
@@ -131,10 +159,10 @@ const Attendance = {
       `SELECT a.*, l.name as location_name
        FROM attendance_logs a
        LEFT JOIN locations l ON a.location_id = l.id
-       WHERE a.user_id = ? AND a.status IN ('Clock In', 'Clock Out', 'Izin', 'Hadir')
+       ${whereClause}
        ORDER BY a.created_at DESC
        LIMIT ? OFFSET ?`,
-      [userId, limit.toString(), offset.toString()]
+      [...params, limit.toString(), offset.toString()]
     );
 
     return {
