@@ -140,6 +140,42 @@ class AttendanceResult {
   }
 }
 
+class AttendanceStats {
+  final int ciAndCo;
+  final int ciNotCo;
+  final int izin;
+  final int alpha;
+  final String? startDate;
+  final String? endDate;
+
+  const AttendanceStats({
+    this.ciAndCo = 0,
+    this.ciNotCo = 0,
+    this.izin = 0,
+    this.alpha = 0,
+    this.startDate,
+    this.endDate,
+  });
+
+  int get total => ciAndCo + ciNotCo + izin + alpha;
+  int get maxVal {
+    final vals = [ciAndCo, ciNotCo, izin, alpha];
+    vals.sort();
+    return vals.last;
+  }
+
+  factory AttendanceStats.fromJson(Map<String, dynamic> json) {
+    return AttendanceStats(
+      ciAndCo: (json['ci_and_co'] as num?)?.toInt() ?? 0,
+      ciNotCo: (json['ci_not_co'] as num?)?.toInt() ?? 0,
+      izin: (json['izin'] as num?)?.toInt() ?? 0,
+      alpha: (json['alpha'] as num?)?.toInt() ?? 0,
+      startDate: json['start_date']?.toString(),
+      endDate: json['end_date']?.toString(),
+    );
+  }
+}
+
 class AttendanceService {
   /// Mengambil auth token JWT dari SharedPreferences lokal
   static Future<String?> _getAuthToken() async {
@@ -306,10 +342,24 @@ class AttendanceService {
     }
   }
 
-  /// Mengambil riwayat absensi pengguna yang sedang login
+  /// Mengambil riwayat absensi pengguna yang sedang login dengan filter tanggal/bulan/tahun
   /// Endpoint: GET /api/attendance/history
-  static Future<List<Map<String, dynamic>>> getMyHistory({int page = 1, int limit = 20}) async {
-    final uri = Uri.parse('${ApiConstants.attendanceHistoryUrl}?page=$page&limit=$limit');
+  static Future<List<Map<String, dynamic>>> getMyHistory({
+    int page = 1,
+    int limit = 100,
+    String? date,
+    int? month,
+    int? year,
+  }) async {
+    final queryParams = <String, String>{
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    if (date != null && date.isNotEmpty) queryParams['date'] = date;
+    if (month != null) queryParams['month'] = month.toString();
+    if (year != null) queryParams['year'] = year.toString();
+
+    final uri = Uri.parse(ApiConstants.attendanceHistoryUrl).replace(queryParameters: queryParams);
     final token = await _getAuthToken();
 
     final response = await http.get(
@@ -328,5 +378,41 @@ class AttendanceService {
       final decoded = jsonDecode(response.body);
       throw Exception(decoded['message'] ?? 'Gagal memuat riwayat presensi: ${response.statusCode}');
     }
+  }
+
+  /// Mengambil data statistik absensi untuk diagram batang
+  /// Endpoint: GET /api/attendance/statistics
+  static Future<AttendanceStats> getMyStatistics({
+    String? date,
+    int? month,
+    int? year,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (date != null && date.isNotEmpty) queryParams['date'] = date;
+      if (month != null) queryParams['month'] = month.toString();
+      if (year != null) queryParams['year'] = year.toString();
+
+      final uri = Uri.parse(ApiConstants.attendanceStatisticsUrl).replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
+      final token = await _getAuthToken();
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        if (decoded['success'] == true && decoded['data'] != null) {
+          return AttendanceStats.fromJson(decoded['data'] as Map<String, dynamic>);
+        }
+      }
+    } catch (_) {}
+    return const AttendanceStats();
   }
 }

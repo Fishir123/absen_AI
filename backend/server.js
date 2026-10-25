@@ -54,13 +54,16 @@ uploadDirs.forEach((dir) => {
 // Helmet - HTTP security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Untuk akses file uploads dari frontend
+  contentSecurityPolicy: false, // Jangan force upgrade-insecure-requests jika akses via IP/HTTP
+  hsts: false, // Nonaktifkan HSTS agar browser tidak memaksa HTTPS ke server IP
 }));
 
 // CORS - Konfigurasi cross-origin
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.CORS_ORIGIN || 'http://localhost:3000'
-    : '*',
+  origin: (origin, callback) => {
+    // Izinkan semua origin (Flutter Web di localhost/device apapun, web dashboard, dll.)
+    callback(null, true);
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
