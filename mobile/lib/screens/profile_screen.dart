@@ -349,67 +349,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showServerSettingsDialog() {
-    final controller = TextEditingController(text: ApiConstants.baseUrl);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Pengaturan Server Backend', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Alamat URL Backend API (Express.js):',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'http://192.168.1.xxx:5000',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Default: ${ApiConstants.defaultBaseUrl}',
-              style: const TextStyle(fontSize: 11, color: Colors.black45),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await ApiConstants.setCustomBaseUrl(null);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                setState(() {});
-              }
-            },
-            child: const Text('Reset Default'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF365C4A),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              await ApiConstants.setCustomBaseUrl(controller.text);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                setState(() {});
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -456,11 +395,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: 'Profil Saya',
         automaticallyImplyLeading: false,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _showServerSettingsDialog,
-            tooltip: 'Pengaturan Server',
-          ),
           IconButton(
             icon: const Icon(Icons.logout, color: Colors.redAccent),
             onPressed: _handleLogout,
@@ -606,25 +540,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const Divider(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Role', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF365C4A).withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                (_userData['role'] ?? 'user').toUpperCase(),
-                                style: const TextStyle(fontSize: 11, color: Color(0xFF365C4A), fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
+
                         const Divider(height: 20),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
