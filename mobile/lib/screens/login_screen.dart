@@ -1,9 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import '../config/api_constants.dart';
 import '../services/auth_service.dart';
-import '../main.dart';
+import 'welcome_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -50,9 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (result['success'] == true) {
+      final user = result['data']?['user'] ?? result['data']?['data']?['user'];
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => MainNavigationWrapper(cameras: widget.cameras),
+          builder: (context) => WelcomeScreen(
+            cameras: widget.cameras,
+            initialUser: user is Map<String, dynamic> ? user : null,
+          ),
         ),
       );
     } else {
@@ -62,102 +64,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showServerSettings() {
-    final controller = TextEditingController(text: ApiConstants.baseUrl);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Pengaturan Server Backend',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Ubah URL Backend Express.js jika menjalankan di HP fisik via Wi-Fi:',
-              style: TextStyle(fontSize: 12, color: Colors.black54),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                hintText: 'http://192.168.1.xxx:5000',
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Default Android: http://10.0.2.2:5000\nDefault Web/iOS: http://localhost:5000',
-              style: TextStyle(fontSize: 11, color: Colors.black45),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await ApiConstants.setCustomBaseUrl(null);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                setState(() {});
-              }
-            },
-            child: const Text('Reset Default'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF365C4A),
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              await ApiConstants.setCustomBaseUrl(controller.text);
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                setState(() {});
-              }
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16, top: 8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      width: 1.0,
-                    ),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.dns_outlined, color: Colors.white, size: 20),
-                    tooltip: 'Pengaturan Server URL',
-                    onPressed: _showServerSettings,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -412,7 +321,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
                         // Help Note
                         const Center(

@@ -4,7 +4,7 @@ import 'package:video_player/video_player.dart';
 import 'package:camera/camera.dart';
 
 import 'login_screen.dart';
-import '../main.dart';
+import 'welcome_screen.dart';
 import '../services/auth_service.dart';
 
 /// Splash screen pembuka aplikasi yang memutar video animasi selama 2 detik
@@ -91,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) {
           if (loggedIn) {
-            return MainNavigationWrapper(cameras: widget.cameras);
+            return WelcomeScreen(cameras: widget.cameras);
           } else {
             return LoginScreen(cameras: widget.cameras);
           }

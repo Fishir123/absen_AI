@@ -31,6 +31,9 @@ flutter_launcher_icons:
   image_path: "lib/asset/icon/app_logo.png"
   min_sdk_android: 21
   remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "lib/asset/icon/app_logo.png"
 
 flutter:
   uses-material-design: true

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConstants {
@@ -12,7 +11,7 @@ class ApiConstants {
     _cachedBaseUrl = prefs.getString(_prefKeyCustomBaseUrl);
   }
 
-  /// Base URL aktif (prioritas: custom URL pengguna > default platform)
+  /// Base URL aktif (prioritas: custom URL pengguna > default)
   static String get baseUrl {
     if (_cachedBaseUrl != null && _cachedBaseUrl!.trim().isNotEmpty) {
       return _cachedBaseUrl!.trim().replaceAll(RegExp(r'/+$'), '');
@@ -25,15 +24,9 @@ class ApiConstants {
           return 'http://$host:5000';
         }
       } catch (_) {}
-      return 'http://localhost:5000';
+      return 'http://163.52.135.187:5000';
     }
-    try {
-      if (Platform.isAndroid) {
-        // Jika di HP fisik, arahkan ke IP Wi-Fi PC (192.168.0.233)
-        return 'http://192.168.0.233:5000';
-      }
-    } catch (_) {}
-    return 'http://localhost:5000';
+    return 'http://163.52.135.187:5000';
   }
 
   /// Mengatur custom base URL (misalnya jika pengujian menggunakan HP fisik via Wi-Fi IP komputer)
@@ -49,17 +42,9 @@ class ApiConstants {
     }
   }
 
-  /// Default Base URL sesuai platform saat ini
+  /// Default Base URL
   static String get defaultBaseUrl {
-    if (kIsWeb) {
-      return 'http://localhost:5000';
-    }
-    try {
-      if (Platform.isAndroid) {
-        return 'http://10.0.2.2:5000';
-      }
-    } catch (_) {}
-    return 'http://localhost:5000';
+    return 'http://163.52.135.187:5000';
   }
 
   // Auth Endpoints
@@ -92,7 +77,7 @@ class ApiConstants {
       final uri = Uri.parse(baseUrl);
       return '${uri.scheme}://${uri.host}:8000';
     } catch (_) {
-      return 'http://127.0.0.1:8000';
+      return 'http://163.52.135.187:8000';
     }
   }
 }
