@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../services/auth_service.dart';
-import '../main.dart';
+import 'welcome_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -48,9 +48,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     if (result['success'] == true) {
+      final user = result['data']?['user'] ?? result['data']?['data']?['user'];
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => MainNavigationWrapper(cameras: widget.cameras),
+          builder: (context) => WelcomeScreen(
+            cameras: widget.cameras,
+            initialUser: user is Map<String, dynamic> ? user : null,
+          ),
         ),
       );
     } else {

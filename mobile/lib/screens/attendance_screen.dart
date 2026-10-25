@@ -3,8 +3,10 @@ import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import '../services/attendance_service.dart';
+import '../services/auth_service.dart';
 import '../services/location_service.dart';
 import '../widgets/liquid_glass.dart';
+import 'login_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
   final List<CameraDescription> cameras;
@@ -556,14 +558,31 @@ class _AttendanceScreenState extends State<AttendanceScreen> with WidgetsBinding
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  final isTokenExpired = result.message.toLowerCase().contains('kedaluwarsa') ||
+                      result.message.toLowerCase().contains('login ulang');
+                  if (isTokenExpired) {
+                    await AuthService.logout();
+                    if (!context.mounted) return;
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => LoginScreen(cameras: widget.cameras)),
+                      (route) => false,
+                    );
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: const Text('Mengerti', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                child: Text(
+                  (result.message.toLowerCase().contains('kedaluwarsa') || result.message.toLowerCase().contains('login ulang'))
+                      ? 'Login Ulang Sekarang'
+                      : 'Mengerti',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

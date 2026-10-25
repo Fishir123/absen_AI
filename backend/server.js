@@ -181,28 +181,7 @@ const startServer = async () => {
       console.error('⚠️ Gagal membuat tabel galleries:', err.message);
     }
 
-    // Jalankan Auto Clock Out untuk presensi hari-hari sebelumnya yang belum di-clock out
-    const Attendance = require('./models/Attendance');
-    try {
-      const autoCount = await Attendance.autoClockOut();
-      if (autoCount > 0) {
-        console.log(`⏰ Auto Clock Out: ${autoCount} presensi sebelumnya berhasil ditutup otomatis.`);
-      }
-    } catch (err) {
-      console.error('⚠️ Gagal menjalankan auto clock out saat start:', err.message);
-    }
 
-    // Interval pemeriksaan Auto Clock Out berkala (setiap 30 menit)
-    setInterval(async () => {
-      try {
-        const autoCount = await Attendance.autoClockOut();
-        if (autoCount > 0) {
-          console.log(`⏰ Auto Clock Out [Interval]: ${autoCount} presensi berhasil ditutup otomatis.`);
-        }
-      } catch (err) {
-        console.error('⚠️ Error pada background auto clock out:', err.message);
-      }
-    }, 30 * 60 * 1000);
 
     app.listen(PORT, () => {
       console.log('══════════════════════════════════════════');

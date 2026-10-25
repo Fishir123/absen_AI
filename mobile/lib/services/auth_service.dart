@@ -26,7 +26,10 @@ class AuthService {
       final response = await http
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Client': 'mobile',
+            },
             body: body,
           )
           .timeout(const Duration(seconds: 15));
