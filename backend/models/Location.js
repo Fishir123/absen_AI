@@ -58,12 +58,13 @@ const Location = {
    * @returns {Promise<object>}
    */
   create: async ({ name, latitude, longitude, radius, is_active = 1 }) => {
-    // Semua lokasi baru langsung aktif, tidak menonaktifkan lokasi lain
+    // Semua lokasi baru langsung aktif secara default (is_active: 1)
+    const activeStatus = (is_active === 0 || is_active === false || is_active === '0') ? 0 : 1;
     const [result] = await pool.execute(
       'INSERT INTO locations (name, latitude, longitude, radius, is_active) VALUES (?, ?, ?, ?, ?)',
-      [name, latitude, longitude, radius, shouldBeActive ? 1 : 0]
+      [name, latitude, longitude, radius, activeStatus]
     );
-    return { id: result.insertId, name, latitude, longitude, radius, is_active: shouldBeActive ? 1 : 0 };
+    return { id: result.insertId, name, latitude, longitude, radius, is_active: activeStatus };
   },
 
   /**
