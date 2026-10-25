@@ -18,6 +18,7 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detectingGps, setDetectingGps] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   const showNotif = (type, message) => {
     setNotification({ type, message });
@@ -64,6 +65,7 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
   // Buka modal untuk Tambah Lokasi Baru
   const handleOpenAddModal = () => {
     setEditingLocation(null);
+    setModalError('');
     setFormData({
       name: '',
       latitude: '',
@@ -77,6 +79,7 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
   // Buka modal untuk Edit Lokasi
   const handleOpenEditModal = (loc) => {
     setEditingLocation(loc);
+    setModalError('');
     setFormData({
       name: loc.name || '',
       latitude: loc.latitude !== undefined ? String(loc.latitude) : '',
@@ -91,6 +94,7 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingLocation(null);
+    setModalError('');
   };
 
   // Input Change Handler dengan Auto-Sanitize Koma & Format GPS
@@ -118,14 +122,19 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
     }));
   };
 
-  // Ambil GPS perangkat saat ini
+  // Ambil GPS perangkat saat ini dengan auto fallback & error handling komprehensif
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
-      showNotif('error', 'Browser Anda tidak mendukung Geolocation API.');
+      const msg = 'Browser Anda tidak mendukung Geolocation API.';
+      setModalError(msg);
+      showNotif('error', msg);
       return;
     }
 
     setDetectingGps(true);
+    setModalError('');
+
+    // Langkah 1: Coba High Accuracy (Satelit / GPS perangkat mobile)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setFormData((prev) => ({
@@ -134,26 +143,67 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
           longitude: String(position.coords.longitude.toFixed(6)),
         }));
         setDetectingGps(false);
+        setModalError('');
         showNotif('success', 'Berhasil mendeteksi koordinat GPS saat ini!');
       },
-      (error) => {
-        setDetectingGps(false);
-        let msg = 'Gagal mengambil koordinat GPS.';
-        if (error.code === error.PERMISSION_DENIED) {
-          msg = 'Izin akses lokasi ditolak oleh pengguna pada browser.';
+      (errorHigh) => {
+        // Jika izin lokasi ditolak oleh user di browser
+        if (errorHigh.code === errorHigh.PERMISSION_DENIED) {
+          setDetectingGps(false);
+          const msg = 'Izin akses lokasi ditolak oleh browser. Silakan klik ikon perizinan/gembok di URL bar browser Anda untuk mengizinkan akses lokasi.';
+          setModalError(msg);
+          showNotif('error', msg);
+          return;
         }
-        showNotif('error', msg);
+
+        // Langkah 2: Fallback ke Low Accuracy (berbasis IP / Wi-Fi, cocok untuk laptop/PC tanpa chip GPS satelit)
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setFormData((prev) => ({
+              ...prev,
+              latitude: String(position.coords.latitude.toFixed(6)),
+              longitude: String(position.coords.longitude.toFixed(6)),
+            }));
+            setDetectingGps(false);
+            setModalError('');
+            showNotif('success', 'Berhasil mendeteksi lokasi perangkat!');
+          },
+          (errorLow) => {
+            setDetectingGps(false);
+            let msg = 'Gagal mendeteksi lokasi.';
+            if (errorLow.code === errorLow.PERMISSION_DENIED) {
+              msg = 'Izin akses lokasi ditolak oleh pengguna pada browser.';
+            } else if (errorLow.code === errorLow.POSITION_UNAVAILABLE) {
+              msg = 'Sinyal lokasi tidak tersedia (komputer PC/laptop umumnya tidak memiliki chip GPS fisik). Silakan salin koordinat langsung dari Google Maps.';
+            } else if (errorLow.code === errorLow.TIMEOUT) {
+              msg = 'Waktu pencarian lokasi GPS habis. Silakan coba lagi atau masukkan koordinat secara manual dari Google Maps.';
+            } else {
+              msg = 'Gagal mengambil koordinat: ' + (errorLow.message || 'Error tidak diketahui');
+            }
+            setModalError(msg);
+            showNotif('error', msg);
+          },
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
     );
   };
 
   // Submit Simpan (Tambah / Edit)
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setModalError('');
 
     if (!formData.name.trim()) {
+      setModalError('Nama lokasi kantor wajib diisi.');
       showNotif('error', 'Nama lokasi kantor wajib diisi.');
+      return;
+    }
+
+    if (!String(formData.latitude).trim() || !String(formData.longitude).trim()) {
+      setModalError('Longitude dan Latitude wajib diisi. Silakan gunakan tombol GPS atau masukkan koordinat secara manual.');
+      showNotif('error', 'Longitude dan Latitude wajib diisi.');
       return;
     }
 
@@ -174,12 +224,16 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
     const lng = Number(rawLng);
 
     if (isNaN(lat) || lat < -90 || lat > 90) {
-      showNotif('error', 'Latitude harus berupa angka antara -90 dan 90 (gunakan tanda titik "." untuk desimal).');
+      const msg = 'Latitude harus berupa angka antara -90 dan 90 (gunakan tanda titik "." untuk desimal).';
+      setModalError(msg);
+      showNotif('error', msg);
       return;
     }
 
     if (isNaN(lng) || lng < -180 || lng > 180) {
-      showNotif('error', 'Longitude harus berupa angka antara -180 dan 180 (gunakan tanda titik "." untuk desimal).');
+      const msg = 'Longitude harus berupa angka antara -180 dan 180 (gunakan tanda titik "." untuk desimal).';
+      setModalError(msg);
+      showNotif('error', msg);
       return;
     }
 
@@ -208,7 +262,9 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
       await loadLocations();
       handleCloseModal();
     } catch (err) {
-      showNotif('error', 'Gagal menyimpan lokasi: ' + err.message);
+      const errMsg = 'Gagal menyimpan lokasi: ' + (err.response?.data?.message || err.message);
+      setModalError(errMsg);
+      showNotif('error', errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -532,6 +588,21 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
             </div>
 
             <form onSubmit={handleSubmit} style={styles.modalBody}>
+              {/* Alert Error / Peringatan di Dalam Modal */}
+              {modalError && (
+                <div style={styles.modalAlert}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div style={{ flex: 1, fontSize: 12.5, lineHeight: 1.45, color: '#991b1b' }}>
+                    {modalError}
+                  </div>
+                  <button type="button" onClick={() => setModalError('')} style={styles.modalAlertClose}>✕</button>
+                </div>
+              )}
+
               {/* Nama Lokasi */}
               <div style={styles.formGroup}>
                 <label style={styles.formLabel}>Nama Lokasi Kantor *</label>
@@ -576,31 +647,51 @@ export default function TambahLokasiPage({ onBack, onLogout }) {
                 </div>
               </div>
 
-              {/* Tombol Ambil GPS Saat Ini */}
-              <button
-                type="button"
-                onClick={handleGetCurrentLocation}
-                disabled={detectingGps}
-                style={styles.gpsBtn}
-              >
-                {detectingGps ? (
-                  <>
-                    <div style={styles.buttonSpinner} />
-                    <span>Mendeteksi Lokasi GPS...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e5a8a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <line x1="22" y1="12" x2="18" y2="12" />
-                      <line x1="6" y1="12" x2="2" y2="12" />
-                      <line x1="12" y1="6" x2="12" y2="2" />
-                      <line x1="12" y1="22" x2="12" y2="18" />
-                    </svg>
-                    <span>Gunakan Titik GPS Perangkat Saat Ini</span>
-                  </>
-                )}
-              </button>
+              {/* Tombol Ambil GPS Saat Ini & Google Maps Shortcut */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  disabled={detectingGps}
+                  style={{ ...styles.gpsBtn, flex: 1 }}
+                >
+                  {detectingGps ? (
+                    <>
+                      <div style={styles.buttonSpinner} />
+                      <span>Mendeteksi Lokasi GPS...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1e5a8a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="22" y1="12" x2="18" y2="12" />
+                        <line x1="6" y1="12" x2="2" y2="12" />
+                        <line x1="12" y1="6" x2="12" y2="2" />
+                        <line x1="12" y1="22" x2="12" y2="18" />
+                      </svg>
+                      <span>Gunakan GPS Sekarang</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.open('https://www.google.com/maps', '_blank')}
+                  style={styles.mapsBtn}
+                  title="Buka Google Maps di tab baru untuk mengambil koordinat titik kantor"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                    <line x1="8" y1="2" x2="8" y2="18" />
+                    <line x1="16" y1="6" x2="16" y2="22" />
+                  </svg>
+                  <span>Buka Maps</span>
+                </button>
+              </div>
+
+              {/* Tips Salin Koordinat */}
+              <div style={styles.mapsTip}>
+                💡 <b>Tips Koordinat:</b> Di Google Maps, klik kanan titik kantor Anda lalu klik angka koordinat paling atas untuk copy. Cukup Paste di kolom Longitude atau Latitude di atas, kedua kolom akan terisi otomatis.
+              </div>
 
               {/* Radius Toleransi */}
               <div style={{ ...styles.formGroup, marginTop: 14 }}>
@@ -756,15 +847,22 @@ const styles = {
     animation: 'fadeInUp 0.5s ease-out 0.1s both',
   },
   toast: {
+    position: 'fixed',
+    top: 24,
+    right: 24,
+    zIndex: 99999,
     padding: '12px 18px',
     borderRadius: 12,
     border: '1px solid',
     fontSize: 13,
+    fontWeight: 500,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    animation: 'fadeInUp 0.3s ease-out both',
+    gap: 12,
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+    animation: 'slideDown 0.3s ease-out both',
+    maxWidth: '90vw',
   },
   toastClose: {
     background: 'none',
@@ -1068,5 +1166,51 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
     boxShadow: '0 2px 8px rgba(26, 86, 149, 0.25)',
+  },
+  modalAlert: {
+    padding: '10px 14px',
+    background: '#fef2f2',
+    border: '1px solid #fecaca',
+    borderRadius: 8,
+    marginBottom: 14,
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 10,
+    animation: 'fadeIn 0.2s ease-out',
+  },
+  modalAlertClose: {
+    background: 'none',
+    border: 'none',
+    color: '#991b1b',
+    cursor: 'pointer',
+    fontSize: 13,
+    padding: '0 2px',
+    opacity: 0.7,
+  },
+  mapsBtn: {
+    padding: '9px 12px',
+    background: '#f0fdf4',
+    border: '1px solid #bbf7d0',
+    borderRadius: 8,
+    color: '#15803d',
+    fontSize: 12.5,
+    fontWeight: 600,
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    whiteSpace: 'nowrap',
+    transition: 'all 0.2s ease',
+  },
+  mapsTip: {
+    marginTop: 8,
+    fontSize: 11.5,
+    color: '#64748b',
+    lineHeight: 1.45,
+    background: '#f8fafc',
+    padding: '8px 10px',
+    borderRadius: 6,
+    border: '1px dashed #cbd5e1',
   },
 };

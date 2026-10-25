@@ -29,6 +29,9 @@ const Gallery = require('./models/Gallery');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy header jika berjalan di balik reverse proxy (Coolify, Traefik, Nginx, Docker)
+app.set('trust proxy', true);
+
 // ──────────────────────────────────────────────
 // Buat direktori uploads jika belum ada
 // ──────────────────────────────────────────────
