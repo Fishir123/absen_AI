@@ -65,7 +65,7 @@ DETECTOR_BACKEND = "mtcnn"
 # ════════════════════════════════════════════════════════════════════════
 # 🎯 PENGATURAN TINGKAT AKURASI / KEMIRIPAN WAJAH (0 s/d 100%)
 # ════════════════════════════════════════════════════════════════════════
-MIN_CONFIDENCE_PERCENT = 60.0
+MIN_CONFIDENCE_PERCENT = 75.0
 
 # ════════════════════════════════════════════════════════════════════════
 # 🚀 OPTIMASI: Maksimum resolusi gambar sebelum inferensi
