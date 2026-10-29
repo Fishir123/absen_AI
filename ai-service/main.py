@@ -51,7 +51,7 @@ TEMP_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 # ──────────────────────────────────────────────
 # Model yang digunakan (pre-load saat startup)
 # ──────────────────────────────────────────────
-MODEL_NAME = "SFace"
+MODEL_NAME = "Facenet512"
 DISTANCE_METRIC = "cosine"
 
 # ════════════════════════════════════════════════════════════════════════
